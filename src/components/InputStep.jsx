@@ -220,14 +220,14 @@ export default function InputStep({ onSubmit, onBatch, error, resumes, activeRes
               {jobTab === 'url' && (
                 <div className="flex-1 min-h-72 flex flex-col gap-4 rounded-xl bg-gray-900 border border-gray-700 p-6">
                   <div>
-                    <p className="text-sm text-gray-300 mb-3">Paste a LinkedIn or Finn.no job URL</p>
+                    <p className="text-sm text-gray-300 mb-3">Paste any job posting URL</p>
                     <div className="flex gap-2">
                       <input
                         type="url"
                         value={jobUrl}
                         onChange={e => setJobUrl(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleFetchJob()}
-                        placeholder="https://www.finn.no/job/ad/... or linkedin.com/jobs/view/..."
+                        placeholder="https://www.finn.no/job/ad/... or any job URL"
                         className="flex-1 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-violet-500 text-sm"
                       />
                       <button
@@ -249,7 +249,7 @@ export default function InputStep({ onSubmit, onBatch, error, resumes, activeRes
                     <div className="p-3 rounded-lg bg-yellow-900/30 border border-yellow-700/50 text-yellow-300 text-xs">{jobUrlError}</div>
                   )}
                   <div className="mt-auto p-3 rounded-lg bg-gray-800/60 border border-gray-700/50 text-xs text-gray-500">
-                    Works with <strong className="text-gray-300">Finn.no</strong> and public <strong className="text-gray-300">LinkedIn</strong> job postings. If it fails, switch to <strong className="text-gray-300">Paste</strong>.
+                    Works with <strong className="text-gray-300">Finn.no</strong>, <strong className="text-gray-300">LinkedIn</strong>, Greenhouse, and most company career pages. If it fails, switch to <strong className="text-gray-300">Paste</strong>.
                   </div>
                 </div>
               )}
@@ -258,7 +258,7 @@ export default function InputStep({ onSubmit, onBatch, error, resumes, activeRes
             <>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-300">Job URLs</span>
-                <span className="text-xs text-gray-500">One LinkedIn or Finn.no URL per line</span>
+                <span className="text-xs text-gray-500">One job URL per line — Finn.no, LinkedIn, or any career page</span>
               </div>
               <textarea
                 value={batchUrls}

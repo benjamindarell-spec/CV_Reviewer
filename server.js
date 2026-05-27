@@ -93,16 +93,15 @@ app.post('/api/clean-linkedin', async (req, res) => {
 // Fetch a job posting by URL (LinkedIn or Finn.no)
 app.post('/api/fetch-job', async (req, res) => {
   const { url } = req.body
-  const isLinkedIn = url && url.includes('linkedin.com')
-  const isFinn = url && url.includes('finn.no')
-
-  if (!url || (!isLinkedIn && !isFinn)) {
-    return res.status(400).json({ error: 'Please provide a LinkedIn or Finn.no job URL' })
+  if (!url || !url.startsWith('http')) {
+    return res.status(400).json({ error: 'Please provide a valid job posting URL' })
   }
+
+  const isLinkedIn = url.includes('linkedin.com')
+  const isFinn = url.includes('finn.no')
 
   try {
     let fetchUrl = url
-
     if (isLinkedIn) {
       const jobIdMatch = url.match(/currentJobId=(\d+)/) || url.match(/\/jobs\/view\/(\d+)/)
       if (jobIdMatch) fetchUrl = `https://www.linkedin.com/jobs/view/${jobIdMatch[1]}/`
@@ -119,54 +118,83 @@ app.post('/api/fetch-job', async (req, res) => {
 
     const html = await response.text()
     const $ = cheerio.load(html)
-    $('script, style, nav, footer, header').remove()
+    $('script, style, nav, footer, header, [aria-hidden="true"]').remove()
 
-    let title = '', company = '', body = ''
-
+    // --- LinkedIn ---
     if (isLinkedIn) {
       if (html.includes('authwall') || html.includes('join-linkedin') || html.includes('checkpoint/lg/login')) {
         return res.status(403).json({ error: 'LinkedIn is asking you to log in. Please paste the job description manually.' })
       }
-      title = $('h1').first().text().trim()
-      company = $('.topcard__org-name-link, .top-card-layout__second-subline').first().text().trim()
-      body = $('.description__text, .show-more-less-html__markup, .job-description').text().replace(/\s+/g, ' ').trim()
+      const title = $('h1').first().text().trim()
+      const company = $('.topcard__org-name-link, .top-card-layout__second-subline').first().text().trim()
+      let body = $('.description__text, .show-more-less-html__markup, .job-description').text().replace(/\s+/g, ' ').trim()
       if (!body || body.length < 100) {
         $('section, article, div').each((_, el) => {
           const t = $(el).text().replace(/\s+/g, ' ').trim()
           if (t.length > body.length) body = t
         })
       }
+      const text = [title, company, body].filter(Boolean).join('\n\n').slice(0, 8000)
+      if (text.length < 100) return res.status(403).json({ error: 'Could not extract job details. Please paste the job description manually.' })
+      return res.json({ text })
     }
 
+    // --- Finn.no ---
     if (isFinn) {
-      title = $('h1').first().text().trim()
-      // Company name is in the JSON-LD or in page text near the logo
+      const title = $('h1').first().text().trim()
+      let company = ''
       const jsonLd = $('script[type="application/ld+json"]').map((_, el) => $(el).html()).get()
       for (const blob of jsonLd) {
         try {
           const parsed = JSON.parse(blob)
           if (parsed.hiringOrganization?.name) { company = parsed.hiringOrganization.name; break }
-          if (parsed.name && parsed['@type'] === 'JobPosting') { title = title || parsed.title; break }
         } catch {}
       }
-      if (!company) {
-        // Fallback: look for employer name in visible text blocks
-        company = $('[class*="employer"], [class*="company"], [class*="arbeidsgiver"]').first().text().trim()
-      }
-      // Description: collect all <p> and <li> text inside the main content area
+      if (!company) company = $('[class*="employer"], [class*="company"], [class*="arbeidsgiver"]').first().text().trim()
       const paragraphs = []
-      $('p, li').each((_, el) => {
-        const t = $(el).text().trim()
-        if (t.length > 20) paragraphs.push(t)
-      })
-      body = paragraphs.join('\n')
+      $('p, li').each((_, el) => { const t = $(el).text().trim(); if (t.length > 20) paragraphs.push(t) })
+      const text = [title, company, paragraphs.join('\n')].filter(Boolean).join('\n\n').slice(0, 8000)
+      if (text.length < 100) return res.status(403).json({ error: 'Could not extract job details. Please paste the job description manually.' })
+      return res.json({ text })
     }
 
-    const text = [title, company, body].filter(Boolean).join('\n\n').slice(0, 8000)
+    // --- Generic fallback: extract raw text, let Claude parse the job details ---
+    // First try JSON-LD structured data (works for Greenhouse, many company sites)
+    const jsonLd = $('script[type="application/ld+json"]').map((_, el) => $(el).html()).get()
+    for (const blob of jsonLd) {
+      try {
+        const parsed = JSON.parse(blob)
+        if (parsed['@type'] === 'JobPosting') {
+          const title = parsed.title || ''
+          const company = parsed.hiringOrganization?.name || ''
+          const desc = parsed.description ? parsed.description.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : ''
+          const text = [title, company, desc].filter(Boolean).join('\n\n').slice(0, 8000)
+          if (text.length > 100) return res.json({ text })
+        }
+      } catch {}
+    }
+
+    // Extract visible page text and ask Claude to identify the job posting content
+    const rawText = $('body').text().replace(/\s+/g, ' ').trim().slice(0, 12000)
+    if (rawText.length < 200) {
+      return res.status(403).json({ error: 'Could not extract content from this page. It may require a login or JavaScript. Please paste the job description manually.' })
+    }
+
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      messages: [{
+        role: 'user',
+        content: `The following is raw text scraped from a job posting page. Extract only the job-relevant information and reformat it as clean plain text: job title, company name, and the full job description (requirements, responsibilities, qualifications). Remove all navigation, ads, cookie notices, and unrelated content. Return only the cleaned job posting text, no explanation.\n\nRAW PAGE TEXT:\n${rawText}`
+      }]
+    })
+
+    const text = msg.content[0].text.trim().slice(0, 8000)
     if (text.length < 100) {
-      return res.status(403).json({ error: 'Could not extract job details. Please paste the job description manually.' })
+      return res.status(403).json({ error: 'Could not extract job details from this page. Please paste the job description manually.' })
     }
     res.json({ text })
+
   } catch (err) {
     console.error('fetch-job error:', err)
     res.status(500).json({ error: 'Failed to fetch job posting. Please paste the description manually.' })
