@@ -37,11 +37,14 @@ function Section({ title, children, action, defaultOpen = true }) {
 }
 
 export default function ResultsStep({ results }) {
-  const { jobTitle, company, matchScore, matchSummary, tailoredBullets,
+  const { jobTitle, company, matchScore, matchSummary,
+    tailoredBullets: initialBullets,
     coverLetter: initialCoverLetter, emailDraft, gapAnalysis,
-    salaryEstimate, salaryContext, companySummary, interviewQuestions } = results
+    salaryEstimate, salaryContext, companySummary, interviewQuestions,
+    linkedinMessage } = results
 
   const [coverLetter, setCoverLetter] = useState(initialCoverLetter || '')
+  const [bullets, setBullets] = useState(initialBullets || [])
   const [downloading, setDownloading] = useState(false)
 
   const scoreColor = matchScore >= 75 ? 'text-green-400' : matchScore >= 50 ? 'text-yellow-400' : 'text-red-400'
@@ -55,7 +58,7 @@ export default function ResultsStep({ results }) {
       const res = await apiFetch('/api/export-docx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobTitle, company, coverLetter, tailoredBullets })
+        body: JSON.stringify({ jobTitle, company, coverLetter, tailoredBullets: bullets })
       })
       if (!res.ok) throw new Error('Export failed')
       const blob = await res.blob()
@@ -151,13 +154,18 @@ export default function ResultsStep({ results }) {
         </Section>
       )}
 
-      {/* Tailored Bullets */}
-      <Section title="Tailored Resume Bullets" action={<CopyButton text={tailoredBullets.join('\n')} />}>
-        <ul className="space-y-3">
-          {tailoredBullets.map((bullet, i) => (
-            <li key={i} className="flex gap-3 text-sm text-gray-300">
-              <span className="text-violet-400 mt-0.5 shrink-0">•</span>
-              <span>{bullet}</span>
+      {/* Tailored Bullets — editable */}
+      <Section title="Tailored Resume Bullets" action={<CopyButton text={bullets.join('\n')} />}>
+        <ul className="space-y-2">
+          {bullets.map((bullet, i) => (
+            <li key={i} className="flex gap-3">
+              <span className="text-violet-400 mt-2.5 shrink-0 text-sm">•</span>
+              <textarea
+                value={bullet}
+                onChange={e => setBullets(prev => prev.map((b, j) => j === i ? e.target.value : b))}
+                rows={2}
+                className="flex-1 bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300 leading-relaxed resize-none focus:outline-none focus:border-violet-500 transition-colors"
+              />
             </li>
           ))}
         </ul>
@@ -177,6 +185,14 @@ export default function ResultsStep({ results }) {
       {emailDraft && (
         <Section title="Application Email" action={<CopyButton text={emailDraft} />} defaultOpen={false}>
           <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{emailDraft}</p>
+        </Section>
+      )}
+
+      {/* LinkedIn Connection Message */}
+      {linkedinMessage && (
+        <Section title="LinkedIn Connection Request" action={<CopyButton text={linkedinMessage} />} defaultOpen={false}>
+          <p className="text-xs text-gray-500 mb-3">Send this when connecting with the hiring manager or recruiter on LinkedIn.</p>
+          <p className="text-sm text-gray-300 leading-relaxed">{linkedinMessage}</p>
         </Section>
       )}
 

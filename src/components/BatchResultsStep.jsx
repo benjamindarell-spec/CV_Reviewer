@@ -127,6 +127,16 @@ function JobCard({ result }) {
               <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{result.emailDraft}</p>
             </div>
           )}
+
+          {result.linkedinMessage && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">LinkedIn Connection Request</h3>
+                <CopyButton text={result.linkedinMessage} />
+              </div>
+              <p className="text-sm text-gray-300 leading-relaxed">{result.linkedinMessage}</p>
+            </div>
+          )}
         </div>
       )}
     </div>

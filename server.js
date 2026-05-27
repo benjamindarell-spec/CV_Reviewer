@@ -172,6 +172,7 @@ app.post('/api/analyze', async (req, res) => {
 - "salaryContext": one sentence explaining the estimate — e.g. "Based on 3 years of experience, you'd likely land in the mid-range for this role in London."
 - "companySummary": array of 3-4 short bullet points about the company based only on what can be inferred from the job description (industry, size, mission, culture signals)
 - "interviewQuestions": array of 7 likely interview questions for this specific role
+- "linkedinMessage": a short LinkedIn connection request message (under 280 characters), personalized to the specific role and company, written in first person, warm but professional. Do not use em dashes.
 
 JOB DESCRIPTION:
 ${jobDescription}
