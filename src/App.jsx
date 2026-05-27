@@ -158,6 +158,8 @@ export default function App() {
         </div>
       </header>
 
+      <div className="fixed bottom-4 left-4 text-xs text-gray-600 select-none">An INVESTICA app</div>
+
       <main className="max-w-5xl mx-auto px-6 py-10">
         {step === 'input' && (
           <InputStep
