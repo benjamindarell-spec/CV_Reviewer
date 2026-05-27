@@ -244,7 +244,7 @@ app.post('/api/export-docx', async (req, res) => {
 // Serve built React app in production
 if (existsSync(DIST)) {
   app.use(express.static(DIST))
-  app.get('*', (req, res) => res.sendFile(join(DIST, 'index.html')))
+  app.get('/{*path}', (req, res) => res.sendFile(join(DIST, 'index.html')))
 }
 
 // Catch-all JSON error handler
