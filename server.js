@@ -90,16 +90,23 @@ app.post('/api/clean-linkedin', async (req, res) => {
   }
 })
 
-// Fetch a LinkedIn job posting by URL
+// Fetch a job posting by URL (LinkedIn or Finn.no)
 app.post('/api/fetch-job', async (req, res) => {
   const { url } = req.body
-  if (!url || !url.includes('linkedin.com')) {
-    return res.status(400).json({ error: 'Please provide a valid LinkedIn job URL' })
+  const isLinkedIn = url && url.includes('linkedin.com')
+  const isFinn = url && url.includes('finn.no')
+
+  if (!url || (!isLinkedIn && !isFinn)) {
+    return res.status(400).json({ error: 'Please provide a LinkedIn or Finn.no job URL' })
   }
+
   try {
     let fetchUrl = url
-    const jobIdMatch = url.match(/currentJobId=(\d+)/) || url.match(/\/jobs\/view\/(\d+)/)
-    if (jobIdMatch) fetchUrl = `https://www.linkedin.com/jobs/view/${jobIdMatch[1]}/`
+
+    if (isLinkedIn) {
+      const jobIdMatch = url.match(/currentJobId=(\d+)/) || url.match(/\/jobs\/view\/(\d+)/)
+      if (jobIdMatch) fetchUrl = `https://www.linkedin.com/jobs/view/${jobIdMatch[1]}/`
+    }
 
     const response = await fetch(fetchUrl, {
       headers: {
@@ -111,23 +118,48 @@ app.post('/api/fetch-job', async (req, res) => {
     })
 
     const html = await response.text()
-    if (html.includes('authwall') || html.includes('join-linkedin') || html.includes('checkpoint/lg/login')) {
-      return res.status(403).json({ error: 'LinkedIn is asking you to log in. Please paste the job description manually.' })
-    }
-
     const $ = cheerio.load(html)
     $('script, style, nav, footer, header').remove()
 
-    const title = $('h1').first().text().trim()
-    const company = $('.topcard__org-name-link, .top-card-layout__second-subline').first().text().trim()
-    const description = $('.description__text, .show-more-less-html__markup, .job-description').text().replace(/\s+/g, ' ').trim()
+    let title = '', company = '', body = ''
 
-    let body = description
-    if (!body || body.length < 100) {
-      $('section, article, div').each((_, el) => {
-        const t = $(el).text().replace(/\s+/g, ' ').trim()
-        if (t.length > body.length) body = t
+    if (isLinkedIn) {
+      if (html.includes('authwall') || html.includes('join-linkedin') || html.includes('checkpoint/lg/login')) {
+        return res.status(403).json({ error: 'LinkedIn is asking you to log in. Please paste the job description manually.' })
+      }
+      title = $('h1').first().text().trim()
+      company = $('.topcard__org-name-link, .top-card-layout__second-subline').first().text().trim()
+      body = $('.description__text, .show-more-less-html__markup, .job-description').text().replace(/\s+/g, ' ').trim()
+      if (!body || body.length < 100) {
+        $('section, article, div').each((_, el) => {
+          const t = $(el).text().replace(/\s+/g, ' ').trim()
+          if (t.length > body.length) body = t
+        })
+      }
+    }
+
+    if (isFinn) {
+      title = $('h1').first().text().trim()
+      // Company name is in the JSON-LD or in page text near the logo
+      const jsonLd = $('script[type="application/ld+json"]').map((_, el) => $(el).html()).get()
+      for (const blob of jsonLd) {
+        try {
+          const parsed = JSON.parse(blob)
+          if (parsed.hiringOrganization?.name) { company = parsed.hiringOrganization.name; break }
+          if (parsed.name && parsed['@type'] === 'JobPosting') { title = title || parsed.title; break }
+        } catch {}
+      }
+      if (!company) {
+        // Fallback: look for employer name in visible text blocks
+        company = $('[class*="employer"], [class*="company"], [class*="arbeidsgiver"]').first().text().trim()
+      }
+      // Description: collect all <p> and <li> text inside the main content area
+      const paragraphs = []
+      $('p, li').each((_, el) => {
+        const t = $(el).text().trim()
+        if (t.length > 20) paragraphs.push(t)
       })
+      body = paragraphs.join('\n')
     }
 
     const text = [title, company, body].filter(Boolean).join('\n\n').slice(0, 8000)
