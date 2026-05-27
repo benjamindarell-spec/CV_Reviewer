@@ -139,7 +139,7 @@ export default function App() {
       <header className="border-b border-gray-800 bg-gray-900/50 backdrop-blur sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center text-white font-bold text-sm shrink-0">J</div>
-          <span className="font-semibold text-white">Job Application Copilot</span>
+          <span className="font-semibold text-white">ApplyAI</span>
           <div className="ml-auto flex items-center gap-3">
             {history.length > 0 && (
               <button onClick={() => setShowHistory(true)} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors">

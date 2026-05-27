@@ -34,8 +34,9 @@ export default function PasscodeGate({ onUnlock }) {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="w-12 h-12 rounded-xl bg-violet-600 flex items-center justify-center text-white font-bold text-xl mx-auto mb-4">J</div>
-          <h1 className="text-2xl font-bold text-white">Job Application Copilot</h1>
-          <p className="text-gray-400 text-sm mt-2">Enter your access code to continue</p>
+          <h1 className="text-2xl font-bold text-white">ApplyAI</h1>
+          <p className="text-gray-400 text-sm mt-1">An INVESTICA powered app</p>
+          <p className="text-gray-500 text-xs mt-3">Enter your access code to continue</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
