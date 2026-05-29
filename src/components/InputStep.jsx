@@ -119,9 +119,9 @@ export default function InputStep({ onBatch, error, resumes, activeResumeId, onS
 
   return (
     <div>
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-white mb-3">Offerlia</h1>
-        <p className="text-gray-400 text-lg">Paste your job URLs, get a tailored cover letter, resume bullets, and interview prep — in seconds.</p>
+      <div className="text-center mb-6 md:mb-8">
+        <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Offerlia</h1>
+        <p className="text-gray-400 text-base md:text-lg">AI-powered job applications, tailored to you.</p>
       </div>
 
       {error && (
@@ -133,13 +133,13 @@ export default function InputStep({ onBatch, error, resumes, activeResumeId, onS
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
 
         {/* ── Left header ── */}
-        <div className="flex flex-col justify-end">
+        <div className="flex flex-col justify-end order-1">
           <span className="text-sm font-medium text-gray-300">Job URLs</span>
           <span className="text-xs text-gray-500 mt-0.5">One per line — Finn.no, LinkedIn, or any career page</span>
         </div>
 
         {/* ── Right header ── */}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 order-3 md:order-2 mt-6 md:mt-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-gray-300 shrink-0">Resume:</span>
             {resumes.map(r => (
@@ -171,9 +171,9 @@ export default function InputStep({ onBatch, error, resumes, activeResumeId, onS
             <button onClick={onAddResume} className="text-xs px-2 py-1 rounded-lg border border-dashed border-gray-700 text-gray-500 hover:text-gray-300 hover:border-gray-500 transition-colors">+ New</button>
           </div>
 
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-600">Double-click to rename. Saves on submit.</span>
-            <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-gray-600 hidden sm:block">Double-click to rename. Saves on submit.</span>
+            <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs ml-auto">
               {[{ id: 'paste', label: 'Paste' }, { id: 'upload', label: 'Upload' }, { id: 'linkedin', label: 'LinkedIn' }].map(tab => (
                 <button
                   key={tab.id}
@@ -189,12 +189,12 @@ export default function InputStep({ onBatch, error, resumes, activeResumeId, onS
         </div>
 
         {/* ── Left body ── */}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 order-2 md:order-3">
           <textarea
             value={batchUrls}
             onChange={e => setBatchUrls(e.target.value)}
             placeholder={"https://www.finn.no/job/ad/123\nhttps://www.finn.no/job/ad/456\nhttps://www.linkedin.com/jobs/view/789"}
-            className="min-h-72 p-4 rounded-xl bg-gray-900 border border-gray-700 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-violet-500 resize-none text-sm font-mono leading-relaxed"
+            className="min-h-40 md:min-h-72 p-4 rounded-xl bg-gray-900 border border-gray-700 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-violet-500 resize-none text-sm font-mono leading-relaxed"
           />
           <button
             type="button"
@@ -225,7 +225,7 @@ export default function InputStep({ onBatch, error, resumes, activeResumeId, onS
         </div>
 
         {/* ── Right body ── */}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 order-4">
           {resumeTab === 'paste' && (
             <textarea
               value={resume}
@@ -336,7 +336,7 @@ export default function InputStep({ onBatch, error, resumes, activeResumeId, onS
         </button>
       </div>
 
-      <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         {[
           { icon: '🎯', title: 'Match Score', desc: 'See how well you fit the role' },
           { icon: '✍️', title: 'Tailored Bullets', desc: '5 resume bullets for this exact job' },

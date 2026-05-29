@@ -137,7 +137,7 @@ export default function App() {
 
       <div className="fixed bottom-4 left-4 text-xs text-gray-600 select-none">offerlia.net</div>
 
-      <main className="max-w-5xl mx-auto px-6 py-10">
+      <main className="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10">
         {step === 'input' && (
           <InputStep
             onBatch={handleBatch}
