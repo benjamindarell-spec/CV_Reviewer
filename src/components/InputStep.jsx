@@ -133,11 +133,10 @@ export default function InputStep({ onBatch, error, resumes, activeResumeId, onS
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         {/* Left: Job URLs */}
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between h-6">
+          <div className="flex flex-col h-12 justify-center">
             <span className="text-sm font-medium text-gray-300">Job URLs</span>
-            <span className="text-xs text-gray-500">One per line — Finn.no, LinkedIn, or any career page</span>
+            <span className="text-xs text-gray-500 mt-0.5">One per line — Finn.no, LinkedIn, or any career page</span>
           </div>
-          <div className="h-6" />
           <textarea
             value={batchUrls}
             onChange={e => setBatchUrls(e.target.value)}
