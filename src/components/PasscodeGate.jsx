@@ -33,9 +33,9 @@ export default function PasscodeGate({ onUnlock }) {
     <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4 relative">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-violet-600 flex items-center justify-center text-white font-bold text-xl mx-auto mb-4">J</div>
-          <h1 className="text-2xl font-bold text-white">ApplyAI</h1>
-          <p className="text-gray-400 text-sm mt-1">An INVESTICA powered app</p>
+          <div className="w-12 h-12 rounded-xl bg-violet-600 flex items-center justify-center text-white font-bold text-xl mx-auto mb-4">O</div>
+          <h1 className="text-2xl font-bold text-white">Offerlia</h1>
+          <p className="text-gray-400 text-sm mt-1">AI-powered job applications, tailored to you.</p>
           <p className="text-gray-500 text-xs mt-3">Enter your access code to continue</p>
         </div>
 
@@ -60,7 +60,7 @@ export default function PasscodeGate({ onUnlock }) {
           </button>
         </form>
       </div>
-      <div className="fixed bottom-4 left-4 text-xs text-gray-600 select-none">An INVESTICA app</div>
+      <div className="fixed bottom-4 left-4 text-xs text-gray-600 select-none">offerlia.net</div>
     </div>
   )
 }

@@ -120,8 +120,8 @@ export default function InputStep({ onBatch, error, resumes, activeResumeId, onS
   return (
     <div>
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-white mb-3">Land your next job</h1>
-        <p className="text-gray-400 text-lg">Tailor your application to any job in seconds.</p>
+        <h1 className="text-4xl font-bold text-white mb-3">Offerlia</h1>
+        <p className="text-gray-400 text-lg">Paste your job URLs, get a tailored cover letter, resume bullets, and interview prep — in seconds.</p>
       </div>
 
       {error && (
