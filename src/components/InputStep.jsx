@@ -130,18 +130,19 @@ export default function InputStep({ onBatch, error, resumes, activeResumeId, onS
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         {/* Left: Job URLs */}
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between h-6">
             <span className="text-sm font-medium text-gray-300">Job URLs</span>
             <span className="text-xs text-gray-500">One per line — Finn.no, LinkedIn, or any career page</span>
           </div>
+          <div className="h-6" />
           <textarea
             value={batchUrls}
             onChange={e => setBatchUrls(e.target.value)}
             placeholder={"https://www.finn.no/job/ad/123\nhttps://www.finn.no/job/ad/456\nhttps://www.linkedin.com/jobs/view/789"}
-            className="min-h-40 p-4 rounded-xl bg-gray-900 border border-gray-700 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-violet-500 resize-none text-sm font-mono leading-relaxed"
+            className="min-h-72 p-4 rounded-xl bg-gray-900 border border-gray-700 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-violet-500 resize-none text-sm font-mono leading-relaxed"
           />
           <button
             type="button"
