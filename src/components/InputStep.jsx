@@ -130,50 +130,16 @@ export default function InputStep({ onBatch, error, resumes, activeResumeId, onS
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-        {/* Left: Job URLs */}
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-col h-12 justify-center">
-            <span className="text-sm font-medium text-gray-300">Job URLs</span>
-            <span className="text-xs text-gray-500 mt-0.5">One per line — Finn.no, LinkedIn, or any career page</span>
-          </div>
-          <textarea
-            value={batchUrls}
-            onChange={e => setBatchUrls(e.target.value)}
-            placeholder={"https://www.finn.no/job/ad/123\nhttps://www.finn.no/job/ad/456\nhttps://www.linkedin.com/jobs/view/789"}
-            className="min-h-72 p-4 rounded-xl bg-gray-900 border border-gray-700 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-violet-500 resize-none text-sm font-mono leading-relaxed"
-          />
-          <button
-            type="button"
-            onClick={handleFetchBatch}
-            disabled={fetchingBatch || !batchUrls.trim()}
-            className="py-2 rounded-lg bg-gray-800 text-gray-300 text-sm hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors border border-gray-700"
-          >
-            {fetchingBatch ? 'Fetching job details...' : 'Fetch job details'}
-          </button>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
 
-          {batchJobs.length > 0 && (
-            <div className="space-y-2 mt-1">
-              {batchJobs.map((job, i) => (
-                <div key={i} className={`flex items-center gap-3 p-3 rounded-lg text-xs border ${
-                  job.status === 'ready' ? 'bg-green-900/20 border-green-800/40 text-green-300' :
-                  job.status === 'error' ? 'bg-red-900/20 border-red-800/40 text-red-300' :
-                  'bg-gray-800/60 border-gray-700 text-gray-400'
-                }`}>
-                  {job.status === 'fetching' && <span className="w-3 h-3 border-2 border-gray-500 border-t-violet-400 rounded-full animate-spin shrink-0" />}
-                  {job.status === 'ready' && <span className="shrink-0">✓</span>}
-                  {job.status === 'error' && <span className="shrink-0">✗</span>}
-                  <span className="truncate">{job.url}</span>
-                  {job.status === 'error' && <span className="ml-auto text-red-400 shrink-0">{job.error}</span>}
-                </div>
-              ))}
-            </div>
-          )}
+        {/* ── Left header ── */}
+        <div className="flex flex-col justify-end">
+          <span className="text-sm font-medium text-gray-300">Job URLs</span>
+          <span className="text-xs text-gray-500 mt-0.5">One per line — Finn.no, LinkedIn, or any career page</span>
         </div>
 
-        {/* Right: Resume */}
+        {/* ── Right header ── */}
         <div className="flex flex-col gap-2">
-          {/* Multi-resume selector */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-gray-300 shrink-0">Resume:</span>
             {resumes.map(r => (
@@ -220,7 +186,46 @@ export default function InputStep({ onBatch, error, resumes, activeResumeId, onS
               ))}
             </div>
           </div>
+        </div>
 
+        {/* ── Left body ── */}
+        <div className="flex flex-col gap-2">
+          <textarea
+            value={batchUrls}
+            onChange={e => setBatchUrls(e.target.value)}
+            placeholder={"https://www.finn.no/job/ad/123\nhttps://www.finn.no/job/ad/456\nhttps://www.linkedin.com/jobs/view/789"}
+            className="min-h-72 p-4 rounded-xl bg-gray-900 border border-gray-700 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-violet-500 resize-none text-sm font-mono leading-relaxed"
+          />
+          <button
+            type="button"
+            onClick={handleFetchBatch}
+            disabled={fetchingBatch || !batchUrls.trim()}
+            className="py-2 rounded-lg bg-gray-800 text-gray-300 text-sm hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors border border-gray-700"
+          >
+            {fetchingBatch ? 'Fetching job details...' : 'Fetch job details'}
+          </button>
+
+          {batchJobs.length > 0 && (
+            <div className="space-y-2 mt-1">
+              {batchJobs.map((job, i) => (
+                <div key={i} className={`flex items-center gap-3 p-3 rounded-lg text-xs border ${
+                  job.status === 'ready' ? 'bg-green-900/20 border-green-800/40 text-green-300' :
+                  job.status === 'error' ? 'bg-red-900/20 border-red-800/40 text-red-300' :
+                  'bg-gray-800/60 border-gray-700 text-gray-400'
+                }`}>
+                  {job.status === 'fetching' && <span className="w-3 h-3 border-2 border-gray-500 border-t-violet-400 rounded-full animate-spin shrink-0" />}
+                  {job.status === 'ready' && <span className="shrink-0">✓</span>}
+                  {job.status === 'error' && <span className="shrink-0">✗</span>}
+                  <span className="truncate">{job.url}</span>
+                  {job.status === 'error' && <span className="ml-auto text-red-400 shrink-0">{job.error}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Right body ── */}
+        <div className="flex flex-col gap-2">
           {resumeTab === 'paste' && (
             <textarea
               value={resume}
