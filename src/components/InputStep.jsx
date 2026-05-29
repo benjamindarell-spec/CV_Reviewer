@@ -7,17 +7,8 @@ const TONES = [
   { id: 'enthusiastic', label: 'Enthusiastic' },
 ]
 
-export default function InputStep({ onSubmit, onBatch, error, resumes, activeResumeId, onSelectResume, onAddResume, onDeleteResume, onRenameResume }) {
-  const [mode, setMode] = useState('single')
-
-  // Single mode
-  const [jobDescription, setJobDescription] = useState('')
-  const [jobTab, setJobTab] = useState('paste')
-  const [jobUrl, setJobUrl] = useState('')
-  const [jobUrlLoading, setJobUrlLoading] = useState(false)
-  const [jobUrlError, setJobUrlError] = useState(null)
-
-  // Batch mode
+export default function InputStep({ onBatch, error, resumes, activeResumeId, onSelectResume, onAddResume, onDeleteResume, onRenameResume }) {
+  // Job URLs
   const [batchUrls, setBatchUrls] = useState('')
   const [batchJobs, setBatchJobs] = useState([])
   const [fetchingBatch, setFetchingBatch] = useState(false)
@@ -45,29 +36,7 @@ export default function InputStep({ onSubmit, onBatch, error, resumes, activeRes
     if (ar) setResume(ar.text || '')
   }, [activeResumeId])
 
-  // Single job handlers
-  async function handleFetchJob() {
-    if (!jobUrl.trim()) return
-    setJobUrlLoading(true)
-    setJobUrlError(null)
-    try {
-      const res = await apiFetch('/api/fetch-job', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: jobUrl.trim() })
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to fetch job')
-      setJobDescription(data.text)
-      setJobTab('paste')
-    } catch (err) {
-      setJobUrlError(err.message)
-    } finally {
-      setJobUrlLoading(false)
-    }
-  }
-
-  // Batch fetch
+  // Fetch job details from URLs
   async function handleFetchBatch() {
     const urls = batchUrls.split('\n').map(u => u.trim()).filter(Boolean)
     if (!urls.length) return
@@ -93,14 +62,7 @@ export default function InputStep({ onSubmit, onBatch, error, resumes, activeRes
     setFetchingBatch(false)
   }
 
-  function handleSubmitSingle(e) {
-    e.preventDefault()
-    if (jobDescription.trim() && resume.trim()) {
-      onSubmit({ jobDescription, resume, tone, resumeId: activeResumeId })
-    }
-  }
-
-  function handleSubmitBatch() {
+  function handleSubmit() {
     const ready = batchJobs.filter(j => j.status === 'ready')
     if (!ready.length || !resume.trim()) return
     onBatch({ jobs: ready, resume, tone, resumeId: activeResumeId })
@@ -152,33 +114,14 @@ export default function InputStep({ onSubmit, onBatch, error, resumes, activeRes
     }
   }
 
-  const canSubmitSingle = jobDescription.trim().length > 50 && resume.trim().length > 50
-  const readyBatchCount = batchJobs.filter(j => j.status === 'ready').length
-  const canSubmitBatch = readyBatchCount > 0 && resume.trim().length > 50
+  const readyCount = batchJobs.filter(j => j.status === 'ready').length
+  const canSubmit = readyCount > 0 && resume.trim().length > 50
 
   return (
     <div>
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-white mb-3">Land your next job</h1>
         <p className="text-gray-400 text-lg">Tailor your application to any job in seconds.</p>
-      </div>
-
-      {/* Mode toggle */}
-      <div className="flex justify-center mb-8">
-        <div className="flex rounded-xl overflow-hidden border border-gray-700 text-sm">
-          <button
-            onClick={() => setMode('single')}
-            className={`px-5 py-2 transition-colors ${mode === 'single' ? 'bg-violet-600 text-white' : 'bg-gray-900 text-gray-400 hover:text-white'}`}
-          >
-            Single application
-          </button>
-          <button
-            onClick={() => setMode('batch')}
-            className={`px-5 py-2 transition-colors ${mode === 'batch' ? 'bg-violet-600 text-white' : 'bg-gray-900 text-gray-400 hover:text-white'}`}
-          >
-            Batch mode
-          </button>
-        </div>
       </div>
 
       {error && (
@@ -188,111 +131,43 @@ export default function InputStep({ onSubmit, onBatch, error, resumes, activeRes
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Left: Job description (single) or batch URLs */}
+        {/* Left: Job URLs */}
         <div className="flex flex-col gap-2">
-          {mode === 'single' ? (
-            <>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-300">Job Description</span>
-                <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs">
-                  {[{ id: 'paste', label: 'Paste' }, { id: 'url', label: 'Job URL' }].map(tab => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => { setJobTab(tab.id); setJobUrlError(null) }}
-                      className={`px-3 py-1.5 transition-colors ${jobTab === tab.id ? 'bg-violet-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-300">Job URLs</span>
+            <span className="text-xs text-gray-500">One per line — Finn.no, LinkedIn, or any career page</span>
+          </div>
+          <textarea
+            value={batchUrls}
+            onChange={e => setBatchUrls(e.target.value)}
+            placeholder={"https://www.finn.no/job/ad/123\nhttps://www.finn.no/job/ad/456\nhttps://www.linkedin.com/jobs/view/789"}
+            className="min-h-40 p-4 rounded-xl bg-gray-900 border border-gray-700 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-violet-500 resize-none text-sm font-mono leading-relaxed"
+          />
+          <button
+            type="button"
+            onClick={handleFetchBatch}
+            disabled={fetchingBatch || !batchUrls.trim()}
+            className="py-2 rounded-lg bg-gray-800 text-gray-300 text-sm hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors border border-gray-700"
+          >
+            {fetchingBatch ? 'Fetching job details...' : 'Fetch job details'}
+          </button>
 
-              {jobTab === 'paste' && (
-                <textarea
-                  value={jobDescription}
-                  onChange={e => setJobDescription(e.target.value)}
-                  placeholder={"Software Engineer at Acme Corp...\n\nRequirements:\n- 3+ years React\n- ..."}
-                  className="flex-1 min-h-72 p-4 rounded-xl bg-gray-900 border border-gray-700 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-violet-500 resize-none text-sm leading-relaxed"
-                />
-              )}
-
-              {jobTab === 'url' && (
-                <div className="flex-1 min-h-72 flex flex-col gap-4 rounded-xl bg-gray-900 border border-gray-700 p-6">
-                  <div>
-                    <p className="text-sm text-gray-300 mb-3">Paste any job posting URL</p>
-                    <div className="flex gap-2">
-                      <input
-                        type="url"
-                        value={jobUrl}
-                        onChange={e => setJobUrl(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleFetchJob()}
-                        placeholder="https://www.finn.no/job/ad/... or any job URL"
-                        className="flex-1 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-violet-500 text-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleFetchJob}
-                        disabled={jobUrlLoading || !jobUrl.trim()}
-                        className="px-4 py-2 rounded-lg bg-violet-600 text-white text-sm font-medium hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-                      >
-                        {jobUrlLoading ? (
-                          <span className="flex items-center gap-1.5">
-                            <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            Fetching
-                          </span>
-                        ) : 'Import'}
-                      </button>
-                    </div>
-                  </div>
-                  {jobUrlError && (
-                    <div className="p-3 rounded-lg bg-yellow-900/30 border border-yellow-700/50 text-yellow-300 text-xs">{jobUrlError}</div>
-                  )}
-                  <div className="mt-auto p-3 rounded-lg bg-gray-800/60 border border-gray-700/50 text-xs text-gray-500">
-                    Works with <strong className="text-gray-300">Finn.no</strong>, <strong className="text-gray-300">LinkedIn</strong>, Greenhouse, and most company career pages. If it fails, switch to <strong className="text-gray-300">Paste</strong>.
-                  </div>
+          {batchJobs.length > 0 && (
+            <div className="space-y-2 mt-1">
+              {batchJobs.map((job, i) => (
+                <div key={i} className={`flex items-center gap-3 p-3 rounded-lg text-xs border ${
+                  job.status === 'ready' ? 'bg-green-900/20 border-green-800/40 text-green-300' :
+                  job.status === 'error' ? 'bg-red-900/20 border-red-800/40 text-red-300' :
+                  'bg-gray-800/60 border-gray-700 text-gray-400'
+                }`}>
+                  {job.status === 'fetching' && <span className="w-3 h-3 border-2 border-gray-500 border-t-violet-400 rounded-full animate-spin shrink-0" />}
+                  {job.status === 'ready' && <span className="shrink-0">✓</span>}
+                  {job.status === 'error' && <span className="shrink-0">✗</span>}
+                  <span className="truncate">{job.url}</span>
+                  {job.status === 'error' && <span className="ml-auto text-red-400 shrink-0">{job.error}</span>}
                 </div>
-              )}
-            </>
-          ) : (
-            <>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-300">Job URLs</span>
-                <span className="text-xs text-gray-500">One job URL per line — Finn.no, LinkedIn, or any career page</span>
-              </div>
-              <textarea
-                value={batchUrls}
-                onChange={e => setBatchUrls(e.target.value)}
-                placeholder={"https://www.finn.no/job/ad/123\nhttps://www.finn.no/job/ad/456\nhttps://www.linkedin.com/jobs/view/789"}
-                className="min-h-40 p-4 rounded-xl bg-gray-900 border border-gray-700 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-violet-500 resize-none text-sm font-mono leading-relaxed"
-              />
-              <button
-                type="button"
-                onClick={handleFetchBatch}
-                disabled={fetchingBatch || !batchUrls.trim()}
-                className="py-2 rounded-lg bg-gray-800 text-gray-300 text-sm hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors border border-gray-700"
-              >
-                {fetchingBatch ? 'Fetching job details...' : 'Fetch job details'}
-              </button>
-
-              {batchJobs.length > 0 && (
-                <div className="space-y-2 mt-1">
-                  {batchJobs.map((job, i) => (
-                    <div key={i} className={`flex items-center gap-3 p-3 rounded-lg text-xs border ${
-                      job.status === 'ready' ? 'bg-green-900/20 border-green-800/40 text-green-300' :
-                      job.status === 'error' ? 'bg-red-900/20 border-red-800/40 text-red-300' :
-                      'bg-gray-800/60 border-gray-700 text-gray-400'
-                    }`}>
-                      {job.status === 'fetching' && <span className="w-3 h-3 border-2 border-gray-500 border-t-violet-400 rounded-full animate-spin shrink-0" />}
-                      {job.status === 'ready' && <span className="shrink-0">✓</span>}
-                      {job.status === 'error' && <span className="shrink-0">✗</span>}
-                      <span className="truncate">{job.url}</span>
-                      {job.status === 'error' && <span className="ml-auto text-red-400 shrink-0">{job.error}</span>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
+              ))}
+            </div>
           )}
         </div>
 
@@ -447,23 +322,13 @@ export default function InputStep({ onSubmit, onBatch, error, resumes, activeRes
           </div>
         </div>
 
-        {mode === 'single' ? (
-          <button
-            onClick={handleSubmitSingle}
-            disabled={!canSubmitSingle}
-            className="px-8 py-3 rounded-xl bg-violet-600 text-white font-semibold text-sm hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            Analyze my application →
-          </button>
-        ) : (
-          <button
-            onClick={handleSubmitBatch}
-            disabled={!canSubmitBatch}
-            className="px-8 py-3 rounded-xl bg-violet-600 text-white font-semibold text-sm hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            Run batch ({readyBatchCount} {readyBatchCount === 1 ? 'job' : 'jobs'}) →
-          </button>
-        )}
+        <button
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+          className="px-8 py-3 rounded-xl bg-violet-600 text-white font-semibold text-sm hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          Analyze {readyCount} {readyCount === 1 ? 'job' : 'jobs'} →
+        </button>
       </div>
 
       <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-4">

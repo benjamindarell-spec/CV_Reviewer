@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import InputStep from './components/InputStep'
 import ResultsStep from './components/ResultsStep'
-import LoadingStep from './components/LoadingStep'
 import BatchResultsStep from './components/BatchResultsStep'
 import HistoryPanel from './components/HistoryPanel'
 import PasscodeGate from './components/PasscodeGate'
@@ -75,28 +74,6 @@ export default function App() {
     setHistory(prev => prev.map(e => e.id === id ? { ...e, status } : e))
   }
 
-  async function handleAnalyze({ jobDescription, resume, tone, resumeId }) {
-    setStep('loading')
-    setLoadingLabel(null)
-    setError(null)
-    saveResume(resume, resumeId)
-    try {
-      const res = await apiFetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobDescription, resume, tone })
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Request failed')
-      addToHistory(data)
-      setResults(data)
-      setStep('results')
-    } catch (err) {
-      setError(err.message)
-      setStep('input')
-    }
-  }
-
   async function handleBatch({ jobs, resume, tone, resumeId }) {
     setBatchResults([])
     setStep('batch')
@@ -163,7 +140,6 @@ export default function App() {
       <main className="max-w-5xl mx-auto px-6 py-10">
         {step === 'input' && (
           <InputStep
-            onSubmit={handleAnalyze}
             onBatch={handleBatch}
             error={error}
             resumes={resumes}
@@ -174,7 +150,6 @@ export default function App() {
             onRenameResume={renameResume}
           />
         )}
-        {step === 'loading' && <LoadingStep label={loadingLabel} />}
         {step === 'results' && <ResultsStep results={results} />}
         {step === 'batch' && <BatchResultsStep results={batchResults} loadingLabel={loadingLabel} />}
       </main>
