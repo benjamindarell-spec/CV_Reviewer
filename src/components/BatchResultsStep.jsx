@@ -1,6 +1,16 @@
 import { apiFetch } from '../api.js'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import JSZip from 'jszip'
+
+const LOADING_MESSAGES = [
+  'Reading the job description...',
+  'Reviewing your resume...',
+  'Calculating your match score...',
+  'Crafting tailored resume bullets...',
+  'Writing your cover letter...',
+  'Preparing interview questions...',
+  'Almost there...',
+]
 
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false)
@@ -33,10 +43,15 @@ function JobCard({ result }) {
   }
 
   if (!result.matchScore) {
+    const [msgIndex, setMsgIndex] = useState(0)
+    useEffect(() => {
+      const t = setInterval(() => setMsgIndex(i => (i + 1) % LOADING_MESSAGES.length), 3000)
+      return () => clearInterval(t)
+    }, [])
     return (
       <div className="rounded-xl bg-gray-900 border border-gray-800 p-4 flex items-center gap-3">
         <span className="w-4 h-4 border-2 border-gray-600 border-t-violet-400 rounded-full animate-spin shrink-0" />
-        <span className="text-sm text-gray-400">Analyzing...</span>
+        <span className="text-sm text-gray-400 transition-all">{LOADING_MESSAGES[msgIndex]}</span>
       </div>
     )
   }
@@ -145,10 +160,18 @@ function JobCard({ result }) {
 
 export default function BatchResultsStep({ results, loadingLabel }) {
   const [zipping, setZipping] = useState(false)
+  const [elapsed, setElapsed] = useState(0)
   const done = results.filter(r => r.status === 'done' && r.matchScore).length
   const total = results.length
   const allDone = !loadingLabel && total > 0
   const sorted = [...results].sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
+
+  useEffect(() => {
+    if (allDone) return
+    setElapsed(0)
+    const t = setInterval(() => setElapsed(s => s + 1), 1000)
+    return () => clearInterval(t)
+  }, [allDone])
 
   async function handleExportZip() {
     setZipping(true)
@@ -177,9 +200,11 @@ export default function BatchResultsStep({ results, loadingLabel }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Batch Results</h1>
+          <h1 className="text-2xl font-bold text-white">{allDone ? 'Results' : 'Analyzing...'}</h1>
           <p className="text-gray-400 text-sm mt-0.5">
-            {allDone ? `${done} applications ready — sorted by match score` : loadingLabel || 'Processing...'}
+            {allDone
+              ? `${done} application${done !== 1 ? 's' : ''} ready — sorted by match score`
+              : `${loadingLabel || 'Processing...'} — usually ~30 sec per job (${elapsed}s)`}
           </p>
         </div>
         <div className="flex items-center gap-3">
