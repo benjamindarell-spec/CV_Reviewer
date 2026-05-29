@@ -301,7 +301,7 @@ export default function InputStep({ onBatch, error, resumes, activeResumeId, onS
                 className="py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 bg-violet-600 text-white hover:bg-violet-500 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed"
               >
                 {linkedinLoading ? (
-                  <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Claude is cleaning up your profile...</>
+                  <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Offerlia is cleaning up your profile...</>
                 ) : linkedinRaw.trim() && !linkedinRaw.trim().startsWith('http') ? 'Clean up and import' : 'Paste your profile text above'}
               </button>
             </div>

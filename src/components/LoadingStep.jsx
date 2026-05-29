@@ -28,7 +28,7 @@ export default function LoadingStep({ label }) {
 
       <div className="text-center space-y-2">
         <p className="text-white font-medium">{label || STEPS[currentStep]}</p>
-        <p className="text-gray-500 text-sm">Claude is analyzing your application</p>
+        <p className="text-gray-500 text-sm">Offerlia is analyzing your application</p>
       </div>
 
       <div className="flex gap-1.5">
