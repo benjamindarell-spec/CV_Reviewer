@@ -12,6 +12,17 @@ const LOADING_MESSAGES = [
   'Almost there...',
 ]
 
+const FUN_MESSAGES = [
+  'Brewing the perfect application...',
+  'Reading between the lines...',
+  'Matching your superpowers to the role...',
+  'Polishing your professional story...',
+  'Crafting words that open doors...',
+  'Making recruiters stop scrolling...',
+  'Turning experience into opportunity...',
+  'Almost ready to impress...',
+]
+
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false)
   function copy() { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000) }
@@ -161,6 +172,7 @@ function JobCard({ result }) {
 export default function BatchResultsStep({ results, loadingLabel }) {
   const [zipping, setZipping] = useState(false)
   const [elapsed, setElapsed] = useState(0)
+  const [funIndex, setFunIndex] = useState(0)
   const done = results.filter(r => r.status === 'done' && r.matchScore).length
   const total = results.length
   const allDone = !loadingLabel && total > 0
@@ -170,6 +182,12 @@ export default function BatchResultsStep({ results, loadingLabel }) {
     if (allDone) return
     setElapsed(0)
     const t = setInterval(() => setElapsed(s => s + 1), 1000)
+    return () => clearInterval(t)
+  }, [allDone])
+
+  useEffect(() => {
+    if (allDone) return
+    const t = setInterval(() => setFunIndex(i => (i + 1) % FUN_MESSAGES.length), 3500)
     return () => clearInterval(t)
   }, [allDone])
 
@@ -194,6 +212,40 @@ export default function BatchResultsStep({ results, loadingLabel }) {
       alert('Zip export failed: ' + err.message)
     }
     setZipping(false)
+  }
+
+  if (!allDone && total === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-10 text-center px-4">
+        {/* Pulsing rings */}
+        <div className="relative flex items-center justify-center w-36 h-36">
+          <div className="absolute inset-0 rounded-full border border-violet-500/10 animate-ping" style={{ animationDuration: '2s' }} />
+          <div className="absolute inset-3 rounded-full border border-violet-500/20 animate-ping" style={{ animationDuration: '2s', animationDelay: '0.4s' }} />
+          <div className="absolute inset-6 rounded-full border border-violet-500/30 animate-ping" style={{ animationDuration: '2s', animationDelay: '0.8s' }} />
+          <div className="relative w-16 h-16 rounded-2xl bg-violet-600 flex items-center justify-center text-3xl shadow-lg shadow-violet-500/20">
+            ✨
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="space-y-2">
+          <p className="text-xl font-semibold text-white">{FUN_MESSAGES[funIndex]}</p>
+          <p className="text-gray-500 text-sm">Usually about 30 seconds per job — hang tight</p>
+          <p className="text-gray-600 text-xs mt-1">{elapsed}s</p>
+        </div>
+
+        {/* Bouncing dots */}
+        <div className="flex gap-2">
+          {[0, 1, 2, 3].map(i => (
+            <div
+              key={i}
+              className="w-2 h-2 rounded-full bg-violet-500"
+              style={{ animation: 'bounce 1.2s infinite', animationDelay: `${i * 0.2}s` }}
+            />
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
