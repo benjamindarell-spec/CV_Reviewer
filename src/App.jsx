@@ -79,11 +79,11 @@ export default function App() {
     setStep('batch')
     setError(null)
     saveResume(resume, resumeId)
+    setLoadingLabel(`Analyzing ${jobs.length} job${jobs.length !== 1 ? 's' : ''} in parallel...`)
 
-    const results = []
-    for (let i = 0; i < jobs.length; i++) {
-      const job = jobs[i]
-      setLoadingLabel(`Analyzing ${i + 1} of ${jobs.length}...`)
+    const results = new Array(jobs.length).fill(null)
+
+    await Promise.all(jobs.map(async (job, i) => {
       try {
         const res = await apiFetch('/api/analyze', {
           method: 'POST',
@@ -93,12 +93,13 @@ export default function App() {
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Failed')
         addToHistory(data)
-        results.push({ ...data, status: 'done' })
+        results[i] = { ...data, status: 'done' }
       } catch (err) {
-        results.push({ jobTitle: job.title || 'Unknown', company: '', status: 'error', error: err.message })
+        results[i] = { jobTitle: job.title || 'Unknown', company: '', status: 'error', error: err.message }
       }
-      setBatchResults([...results])
-    }
+      setBatchResults([...results].filter(Boolean))
+    }))
+
     setLoadingLabel(null)
   }
 
