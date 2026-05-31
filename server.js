@@ -55,7 +55,7 @@ function cacheKey(jobDescription, resume) {
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } })
 const anthropic = new Anthropic()
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+const groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null
 
 async function runAnalysis(systemPrompt, resume, jobDescription) {
   if (MODEL_PROVIDER === 'groq') {
