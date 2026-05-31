@@ -27,6 +27,7 @@ export default function InputStep({ onBatch, onModeChange, error, resumes, activ
   const [editingName, setEditingName] = useState('')
 
   const [tone, setTone] = useState('professional')
+  const [language, setLanguage] = useState('english')
 
   const fileInputRef = useRef(null)
 
@@ -64,7 +65,7 @@ export default function InputStep({ onBatch, onModeChange, error, resumes, activ
   function handleSubmit() {
     const ready = batchJobs.filter(j => j.status === 'ready')
     if (!ready.length || !resume.trim()) return
-    onBatch({ jobs: ready, resume, tone, resumeId: activeResumeId, mode: 'applicant' })
+    onBatch({ jobs: ready, resume, tone, language, resumeId: activeResumeId, mode: 'applicant' })
   }
 
   // File upload
@@ -324,21 +325,42 @@ export default function InputStep({ onBatch, onModeChange, error, resumes, activ
         </div>
       </div>
 
-      {/* Tone + Submit */}
+      {/* Tone + Language + Submit */}
       <div className="mt-6 flex flex-col items-center gap-4">
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-400">Tone:</span>
-          <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs">
-            {TONES.map(t => (
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-400">Tone:</span>
+            <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs">
+              {TONES.map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTone(t.id)}
+                  className={`px-4 py-1.5 transition-colors ${tone === t.id ? 'bg-violet-600 text-white' : 'bg-gray-900 text-gray-400 hover:text-white'}`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-400">Language:</span>
+            <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs">
               <button
-                key={t.id}
                 type="button"
-                onClick={() => setTone(t.id)}
-                className={`px-4 py-1.5 transition-colors ${tone === t.id ? 'bg-violet-600 text-white' : 'bg-gray-900 text-gray-400 hover:text-white'}`}
+                onClick={() => setLanguage('english')}
+                className={`px-4 py-1.5 transition-colors ${language === 'english' ? 'bg-violet-600 text-white' : 'bg-gray-900 text-gray-400 hover:text-white'}`}
               >
-                {t.label}
+                English
               </button>
-            ))}
+              <button
+                type="button"
+                onClick={() => setLanguage('job')}
+                className={`px-4 py-1.5 transition-colors ${language === 'job' ? 'bg-violet-600 text-white' : 'bg-gray-900 text-gray-400 hover:text-white'}`}
+              >
+                Job language
+              </button>
+            </div>
           </div>
         </div>
 

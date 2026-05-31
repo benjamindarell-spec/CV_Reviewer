@@ -76,7 +76,7 @@ export default function App() {
     setHistory(prev => prev.map(e => e.id === id ? { ...e, status } : e))
   }
 
-  async function handleBatch({ jobs, resume, tone, resumeId, mode = 'applicant' }) {
+  async function handleBatch({ jobs, resume, tone, language = 'english', resumeId, mode = 'applicant' }) {
     setBatchResults([])
     setStep('batch')
     setError(null)
@@ -90,7 +90,7 @@ export default function App() {
         const res = await apiFetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jobDescription: job.description, resume, tone, mode })
+          body: JSON.stringify({ jobDescription: job.description, resume, tone, language, mode })
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Failed')

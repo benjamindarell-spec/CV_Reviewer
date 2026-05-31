@@ -257,17 +257,20 @@ app.post('/api/fetch-job', async (req, res) => {
 
 // Analyze a single job application
 app.post('/api/analyze', analyzeRateLimit, async (req, res) => {
-  const { jobDescription, resume, tone = 'professional', mode = 'applicant' } = req.body
+  const { jobDescription, resume, tone = 'professional', mode = 'applicant', language = 'english' } = req.body
   if (!jobDescription || !resume) {
     return res.status(400).json({ error: 'Missing jobDescription or resume' })
   }
 
   // Return cached result if available
-  const key = cacheKey(jobDescription, resume + mode)
+  const key = cacheKey(jobDescription, resume + mode + language)
   const cached = resultCache.get(key)
   if (cached && Date.now() - cached.ts < 60 * 60 * 1000) return res.json(cached.data)
 
   const toneInstruction = TONE_INSTRUCTIONS[tone] || TONE_INSTRUCTIONS.professional
+  const languageInstruction = language === 'job'
+    ? 'Detect the language of the job description and write ALL output text — cover letter, resume bullets, email draft, LinkedIn message, gap analysis, summaries, and every other text field — in that same language. Only use English for the JSON key names themselves.'
+    : 'Write all output in English.'
 
   let systemPrompt, jobPrompt
 
@@ -294,7 +297,7 @@ ${jobDescription}
 
 Return only the JSON object, no markdown, no explanation.`
   } else {
-    systemPrompt = `You are an expert career coach and resume writer. You help job seekers tailor their applications to specific job descriptions. Be specific, actionable, and concise. Always return valid JSON. Never use em dashes anywhere in your output. Use commas, periods, or rewrite the sentence instead. ${toneInstruction}`
+    systemPrompt = `You are an expert career coach and resume writer. You help job seekers tailor their applications to specific job descriptions. Be specific, actionable, and concise. Always return valid JSON. Never use em dashes anywhere in your output. Use commas, periods, or rewrite the sentence instead. ${toneInstruction} ${languageInstruction}`
 
     jobPrompt = `Analyze the resume above against this job and return a JSON object with exactly these keys:
 
