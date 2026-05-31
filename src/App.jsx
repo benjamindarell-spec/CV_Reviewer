@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import InputStep from './components/InputStep'
+import RecruiterInputStep from './components/RecruiterInputStep'
 import ResultsStep from './components/ResultsStep'
 import BatchResultsStep from './components/BatchResultsStep'
 import HistoryPanel from './components/HistoryPanel'
@@ -22,6 +23,7 @@ export default function App() {
   if (!unlocked) return <PasscodeGate onUnlock={() => setUnlocked(true)} />
 
   const [step, setStep] = useState('input')
+  const [mode, setMode] = useState('applicant')
   const [results, setResults] = useState(null)
   const [batchResults, setBatchResults] = useState([])
   const [error, setError] = useState(null)
@@ -103,6 +105,33 @@ export default function App() {
     setLoadingLabel(null)
   }
 
+  async function handleRecruiterBatch({ jobDescription, candidates }) {
+    setBatchResults([])
+    setStep('batch')
+    setError(null)
+    setLoadingLabel(`Evaluating ${candidates.length} candidate${candidates.length !== 1 ? 's' : ''}...`)
+
+    const results = new Array(candidates.length).fill(null)
+
+    await Promise.all(candidates.map(async (candidate, i) => {
+      try {
+        const res = await apiFetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobDescription, resume: candidate.text, mode: 'recruiter' })
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Failed')
+        results[i] = { ...data, status: 'done', mode: 'recruiter', candidateFile: candidate.filename }
+      } catch (err) {
+        results[i] = { candidateName: candidate.filename, jobTitle: '', company: '', status: 'error', error: err.message, mode: 'recruiter', candidateFile: candidate.filename }
+      }
+      setBatchResults([...results].filter(Boolean))
+    }))
+
+    setLoadingLabel(null)
+  }
+
   function handleReset() {
     setResults(null)
     setBatchResults([])
@@ -141,9 +170,10 @@ export default function App() {
       <div className="fixed bottom-4 left-4 text-xs text-gray-600 select-none">offerlia.net</div>
 
       <main className="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10">
-        {step === 'input' && (
+        {step === 'input' && mode === 'applicant' && (
           <InputStep
             onBatch={handleBatch}
+            onModeChange={setMode}
             error={error}
             resumes={resumes}
             activeResumeId={activeResumeId}
@@ -151,6 +181,12 @@ export default function App() {
             onAddResume={addResume}
             onDeleteResume={deleteResume}
             onRenameResume={renameResume}
+          />
+        )}
+        {step === 'input' && mode === 'recruiter' && (
+          <RecruiterInputStep
+            onBatch={handleRecruiterBatch}
+            onModeChange={setMode}
           />
         )}
         {step === 'results' && <ResultsStep results={results} />}

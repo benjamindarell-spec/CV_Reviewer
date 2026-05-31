@@ -61,7 +61,7 @@ async function runAnalysis(systemPrompt, resume, jobDescription) {
   if (MODEL_PROVIDER === 'groq') {
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
-      max_tokens: 5000,
+      max_tokens: 8000,
       temperature: 0.3,
       messages: [
         { role: 'system', content: systemPrompt },
@@ -72,7 +72,7 @@ async function runAnalysis(systemPrompt, resume, jobDescription) {
   } else {
     const message = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 5000,
+      max_tokens: 8000,
       system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
       messages: [{
         role: 'user',
@@ -275,6 +275,7 @@ app.post('/api/analyze', analyzeRateLimit, async (req, res) => {
 
     jobPrompt = `Evaluate the candidate's resume against this job description and return a JSON object with exactly these keys:
 
+- "candidateName": the candidate's full name extracted from their CV
 - "jobTitle": the job title extracted from the job description
 - "company": the company name extracted from the job description
 - "fitScore": integer 0-100 representing how well the candidate fits the role
@@ -317,19 +318,21 @@ Return only the JSON object, no markdown, no explanation.`
   }
 
   try {
-    let raw = (await runAnalysis(systemPrompt, resume, jobPrompt)).trim().replace(/—/g, ',')
-    // Strip markdown code fences if model wrapped response
-    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
-    // Extract JSON object if there's any preamble text
+    let raw = (await runAnalysis(systemPrompt, resume, jobPrompt)).trim()
+    // Remove all markdown code fences regardless of position
+    raw = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
+    // Replace em dashes that may appear in values
+    raw = raw.replace(/—/g, ',')
+    // Extract the JSON object (handles any preamble or trailing text)
     const jsonStart = raw.indexOf('{')
     const jsonEnd = raw.lastIndexOf('}')
-    if (jsonStart !== -1 && jsonEnd !== -1) raw = raw.slice(jsonStart, jsonEnd + 1)
-    console.log('Raw response preview:', raw.slice(0, 200))
+    if (jsonStart === -1 || jsonEnd === -1) throw new SyntaxError('No JSON object found in response')
+    raw = raw.slice(jsonStart, jsonEnd + 1)
     const data = JSON.parse(raw)
     resultCache.set(key, { data, ts: Date.now() })
     res.json(data)
   } catch (err) {
-    console.error('analyze error:', err)
+    console.error('analyze error:', err.message)
     if (err instanceof SyntaxError) {
       res.status(500).json({ error: 'AI returned invalid JSON. Please try again.' })
     } else {

@@ -194,8 +194,8 @@ function RecruiterCard({ result }) {
       <div className="flex items-center gap-4 p-4">
         <div className={`px-2.5 py-1 rounded-lg border text-sm font-bold ${scoreColor} ${scoreBg}`}>{result.fitScore}</div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white truncate">{result.jobTitle}</p>
-          {result.company && <p className="text-xs text-gray-500 truncate">{result.company}</p>}
+          <p className="text-sm font-medium text-white truncate">{result.candidateName || result.candidateFile || 'Candidate'}</p>
+          {result.jobTitle && <p className="text-xs text-gray-500 truncate">{result.jobTitle}{result.company ? ` — ${result.company}` : ''}</p>}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {result.recommendation && (
@@ -358,18 +358,22 @@ export default function BatchResultsStep({ results, loadingLabel }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">{allDone ? 'Results' : 'Analyzing...'}</h1>
+          <h1 className="text-2xl font-bold text-white">
+            {allDone ? (isRecruiter ? 'Candidate Ranking' : 'Results') : (isRecruiter ? 'Evaluating...' : 'Analyzing...')}
+          </h1>
           <p className="text-gray-400 text-sm mt-0.5">
             {allDone
-              ? `${done} application${done !== 1 ? 's' : ''} ready — sorted by match score`
-              : `${loadingLabel || 'Processing...'} — usually ~30 sec per job (${elapsed}s)`}
+              ? isRecruiter
+                ? `${done} candidate${done !== 1 ? 's' : ''} evaluated — sorted by fit score`
+                : `${done} application${done !== 1 ? 's' : ''} ready — sorted by match score`
+              : `${loadingLabel || 'Processing...'} — usually ~30 sec per ${isRecruiter ? 'candidate' : 'job'} (${elapsed}s)`}
           </p>
         </div>
         <div className="flex items-center gap-3">
           {!allDone && (
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <span className="w-4 h-4 border-2 border-gray-600 border-t-violet-400 rounded-full animate-spin" />
-              {done}/{total}
+              {done}/{total} {isRecruiter ? 'candidates' : 'jobs'}
             </div>
           )}
           {allDone && done > 1 && !isRecruiter && (
