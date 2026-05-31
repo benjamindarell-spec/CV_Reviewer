@@ -8,6 +8,7 @@ import { existsSync } from 'fs'
 import mammoth from 'mammoth'
 import * as cheerio from 'cheerio'
 import Anthropic from '@anthropic-ai/sdk'
+import Groq from 'groq-sdk'
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx'
 
 const require = createRequire(import.meta.url)
@@ -16,6 +17,7 @@ const pdfParse = require('pdf-parse')
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DIST = join(__dirname, 'dist')
 const APP_PASSCODE = process.env.APP_PASSCODE || ''
+const MODEL_PROVIDER = process.env.MODEL_PROVIDER || 'claude' // 'claude' or 'groq'
 
 const app = express()
 app.use(cors())
@@ -52,7 +54,37 @@ function cacheKey(jobDescription, resume) {
 }
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } })
-const client = new Anthropic()
+const anthropic = new Anthropic()
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+
+async function runAnalysis(systemPrompt, resume, jobDescription) {
+  if (MODEL_PROVIDER === 'groq') {
+    const completion = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 5000,
+      temperature: 0.3,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `RESUME:\n${resume}\n\n${jobDescription}` }
+      ]
+    })
+    return completion.choices[0].message.content
+  } else {
+    const message = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 5000,
+      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: `RESUME:\n${resume}`, cache_control: { type: 'ephemeral' } },
+          { type: 'text', text: jobDescription }
+        ]
+      }]
+    })
+    return message.content[0].text
+  }
+}
 
 const TONE_INSTRUCTIONS = {
   professional: 'Use a formal, polished, and professional tone throughout.',
@@ -96,7 +128,7 @@ app.post('/api/clean-linkedin', async (req, res) => {
     return res.status(400).json({ error: 'Paste more text from your LinkedIn profile' })
   }
   try {
-    const message = await client.messages.create({
+    const message = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 2048,
       messages: [{
@@ -201,7 +233,7 @@ app.post('/api/fetch-job', async (req, res) => {
       return res.status(403).json({ error: 'Could not extract content from this page. It may require a login or JavaScript. Please paste the job description manually.' })
     }
 
-    const msg = await client.messages.create({
+    const msg = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       messages: [{
@@ -237,16 +269,7 @@ app.post('/api/analyze', analyzeRateLimit, async (req, res) => {
   const toneInstruction = TONE_INSTRUCTIONS[tone] || TONE_INSTRUCTIONS.professional
   const systemPrompt = `You are an expert career coach and resume writer. You help job seekers tailor their applications to specific job descriptions. Be specific, actionable, and concise. Always return valid JSON. Never use em dashes anywhere in your output. Use commas, periods, or rewrite the sentence instead. ${toneInstruction}`
 
-  try {
-    const message = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 5000,
-      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: `RESUME:\n${resume}`, cache_control: { type: 'ephemeral' } },
-          { type: 'text', text: `Analyze the resume above against this job and return a JSON object with exactly these keys:
+  const jobPrompt = `Analyze the resume above against this job and return a JSON object with exactly these keys:
 
 - "jobTitle": the job title extracted from the job description
 - "company": the company name extracted from the job description
@@ -265,12 +288,10 @@ app.post('/api/analyze', analyzeRateLimit, async (req, res) => {
 JOB DESCRIPTION:
 ${jobDescription}
 
-Return only the JSON object, no markdown, no explanation.` }
-        ]
-      }]
-    })
+Return only the JSON object, no markdown, no explanation.`
 
-    let raw = message.content[0].text.trim().replace(/—/g, ',')
+  try {
+    let raw = (await runAnalysis(systemPrompt, resume, jobPrompt)).trim().replace(/—/g, ',')
     // Strip markdown code fences if model wrapped response
     raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
     // Extract JSON object if there's any preamble text
