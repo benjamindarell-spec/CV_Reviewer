@@ -270,12 +270,19 @@ Return only the JSON object, no markdown, no explanation.` }
       }]
     })
 
-    const raw = message.content[0].text.trim().replace(/—/g, ',')
+    let raw = message.content[0].text.trim().replace(/—/g, ',')
+    // Strip markdown code fences if model wrapped response
+    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+    // Extract JSON object if there's any preamble text
+    const jsonStart = raw.indexOf('{')
+    const jsonEnd = raw.lastIndexOf('}')
+    if (jsonStart !== -1 && jsonEnd !== -1) raw = raw.slice(jsonStart, jsonEnd + 1)
+    console.log('Raw response preview:', raw.slice(0, 200))
     const data = JSON.parse(raw)
     resultCache.set(key, { data, ts: Date.now() })
     res.json(data)
   } catch (err) {
-    console.error(err)
+    console.error('analyze error:', err)
     if (err instanceof SyntaxError) {
       res.status(500).json({ error: 'AI returned invalid JSON. Please try again.' })
     } else {
