@@ -30,6 +30,27 @@ function requirePasscode(req, res, next) {
 }
 app.use('/api', requirePasscode)
 
+// Simple in-memory rate limiter — 20 analyze calls per IP per hour
+const rateLimitMap = new Map()
+function analyzeRateLimit(req, res, next) {
+  const ip = req.ip || req.connection.remoteAddress
+  const now = Date.now()
+  const window = 60 * 60 * 1000
+  const hits = (rateLimitMap.get(ip) || []).filter(t => now - t < window)
+  if (hits.length >= 20) return res.status(429).json({ error: 'Too many requests — please try again later.' })
+  hits.push(now)
+  rateLimitMap.set(ip, hits)
+  next()
+}
+
+// Simple URL result cache — keyed by url+resumeHash, TTL 1 hour
+const resultCache = new Map()
+function cacheKey(jobDescription, resume) {
+  let hash = 0
+  for (const c of resume + jobDescription) hash = (Math.imul(31, hash) + c.charCodeAt(0)) | 0
+  return hash.toString()
+}
+
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } })
 const client = new Anthropic()
 
@@ -76,7 +97,7 @@ app.post('/api/clean-linkedin', async (req, res) => {
   }
   try {
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 2048,
       messages: [{
         role: 'user',
@@ -202,11 +223,16 @@ app.post('/api/fetch-job', async (req, res) => {
 })
 
 // Analyze a single job application
-app.post('/api/analyze', async (req, res) => {
+app.post('/api/analyze', analyzeRateLimit, async (req, res) => {
   const { jobDescription, resume, tone = 'professional' } = req.body
   if (!jobDescription || !resume) {
     return res.status(400).json({ error: 'Missing jobDescription or resume' })
   }
+
+  // Return cached result if available
+  const key = cacheKey(jobDescription, resume)
+  const cached = resultCache.get(key)
+  if (cached && Date.now() - cached.ts < 60 * 60 * 1000) return res.json(cached.data)
 
   const toneInstruction = TONE_INSTRUCTIONS[tone] || TONE_INSTRUCTIONS.professional
   const systemPrompt = `You are an expert career coach and resume writer. You help job seekers tailor their applications to specific job descriptions. Be specific, actionable, and concise. Always return valid JSON. Never use em dashes anywhere in your output. Use commas, periods, or rewrite the sentence instead. ${toneInstruction}`
@@ -214,11 +240,13 @@ app.post('/api/analyze', async (req, res) => {
   try {
     const message = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 6000,
-      system: systemPrompt,
+      max_tokens: 3500,
+      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
       messages: [{
         role: 'user',
-        content: `Analyze this job application and return a JSON object with exactly these keys:
+        content: [
+          { type: 'text', text: `RESUME:\n${resume}`, cache_control: { type: 'ephemeral' } },
+          { type: 'text', text: `Analyze the resume above against this job and return a JSON object with exactly these keys:
 
 - "jobTitle": the job title extracted from the job description
 - "company": the company name extracted from the job description
@@ -228,24 +256,24 @@ app.post('/api/analyze', async (req, res) => {
 - "coverLetter": a full professional cover letter (3-4 paragraphs) tailored to the job
 - "emailDraft": a short 3-4 sentence email to send when submitting the application, referencing the role and company
 - "gapAnalysis": array of 3-5 honest gaps or concerns — skills missing, experience lacking, or things that may count against the candidate for this specific role. Be direct and constructive.
-- "salaryEstimate": a realistic salary range string for this specific candidate for this role. Consider both the market rate for the position and where this candidate would likely land within that range given their experience level from the resume (e.g. a junior candidate gets the lower end, senior gets higher). Format as "$80,000 - $100,000" or "£45,000 - £60,000". If location is unclear use a general market estimate.
-- "salaryContext": one sentence explaining the estimate — e.g. "Based on 3 years of experience, you'd likely land in the mid-range for this role in London."
-- "companySummary": array of 3-4 short bullet points about the company based only on what can be inferred from the job description (industry, size, mission, culture signals)
+- "salaryEstimate": a realistic salary range string for this specific candidate for this role. Format as "$80,000 - $100,000" or "£45,000 - £60,000". If location is unclear use a general market estimate.
+- "salaryContext": one sentence explaining the estimate.
+- "companySummary": array of 3-4 short bullet points about the company based only on what can be inferred from the job description
 - "interviewQuestions": array of 7 likely interview questions for this specific role
-- "linkedinMessage": a short LinkedIn connection request message (under 280 characters), personalized to the specific role and company, written in first person, warm but professional. Do not use em dashes.
+- "linkedinMessage": a short LinkedIn connection request message (under 280 characters), written in first person, warm but professional. Do not use em dashes.
 
 JOB DESCRIPTION:
 ${jobDescription}
 
-RESUME:
-${resume}
-
-Return only the JSON object, no markdown, no explanation.`
+Return only the JSON object, no markdown, no explanation.` }
+        ]
       }]
     })
 
     const raw = message.content[0].text.trim().replace(/—/g, ',')
-    res.json(JSON.parse(raw))
+    const data = JSON.parse(raw)
+    resultCache.set(key, { data, ts: Date.now() })
+    res.json(data)
   } catch (err) {
     console.error(err)
     if (err instanceof SyntaxError) {
