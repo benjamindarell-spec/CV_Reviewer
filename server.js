@@ -9,6 +9,7 @@ import mammoth from 'mammoth'
 import * as cheerio from 'cheerio'
 import Anthropic from '@anthropic-ai/sdk'
 import Groq from 'groq-sdk'
+import { jsonrepair } from 'jsonrepair'
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx'
 
 const require = createRequire(import.meta.url)
@@ -326,18 +327,22 @@ Return only the JSON object, no markdown, no explanation.`
     // Extract the JSON object (handles any preamble or trailing text)
     const jsonStart = raw.indexOf('{')
     const jsonEnd = raw.lastIndexOf('}')
-    if (jsonStart === -1 || jsonEnd === -1) throw new SyntaxError('No JSON object found in response')
+    if (jsonStart === -1 || jsonEnd === -1) throw new Error('No JSON object found in response')
     raw = raw.slice(jsonStart, jsonEnd + 1)
-    const data = JSON.parse(raw)
+
+    let data
+    try {
+      data = JSON.parse(raw)
+    } catch {
+      // Fallback: repair common issues (unescaped newlines in strings, trailing commas, etc.)
+      data = JSON.parse(jsonrepair(raw))
+    }
+
     resultCache.set(key, { data, ts: Date.now() })
     res.json(data)
   } catch (err) {
     console.error('analyze error:', err.message)
-    if (err instanceof SyntaxError) {
-      res.status(500).json({ error: 'AI returned invalid JSON. Please try again.' })
-    } else {
-      res.status(500).json({ error: err.message || 'Something went wrong' })
-    }
+    res.status(500).json({ error: err.message?.includes('JSON') || err instanceof SyntaxError ? 'AI returned invalid JSON. Please try again.' : err.message || 'Something went wrong' })
   }
 })
 
