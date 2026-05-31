@@ -26,8 +26,9 @@ export default function InputStep({ onBatch, error, resumes, activeResumeId, onS
   const [editingResumeId, setEditingResumeId] = useState(null)
   const [editingName, setEditingName] = useState('')
 
-  // Tone
+  // Tone & mode
   const [tone, setTone] = useState('professional')
+  const [mode, setMode] = useState('applicant')
 
   const fileInputRef = useRef(null)
 
@@ -65,7 +66,7 @@ export default function InputStep({ onBatch, error, resumes, activeResumeId, onS
   function handleSubmit() {
     const ready = batchJobs.filter(j => j.status === 'ready')
     if (!ready.length || !resume.trim()) return
-    onBatch({ jobs: ready, resume, tone, resumeId: activeResumeId })
+    onBatch({ jobs: ready, resume, tone, resumeId: activeResumeId, mode })
   }
 
   // File upload
@@ -121,7 +122,26 @@ export default function InputStep({ onBatch, error, resumes, activeResumeId, onS
     <div>
       <div className="text-center mb-6 md:mb-8">
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Offerlia</h1>
-        <p className="text-gray-400 text-base md:text-lg">AI-powered job applications, tailored to you.</p>
+        <p className="text-gray-400 text-base md:text-lg mb-5">
+          {mode === 'recruiter' ? 'AI-powered candidate evaluation, built for recruiters.' : 'AI-powered job applications, tailored to you.'}
+        </p>
+        <div className="inline-flex rounded-xl border border-gray-700 p-1 gap-1 bg-gray-900">
+          <button
+            type="button"
+            onClick={() => setMode('applicant')}
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'applicant' ? 'bg-violet-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}
+          >
+            For Applicants
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('recruiter')}
+            className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'recruiter' ? 'bg-violet-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}
+          >
+            For Recruiters
+            <span className="text-xs px-1.5 py-0.5 rounded-md bg-violet-500/30 text-violet-300 font-normal">Beta</span>
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -141,7 +161,7 @@ export default function InputStep({ onBatch, error, resumes, activeResumeId, onS
         {/* ── Right header ── */}
         <div className="flex flex-col gap-2 order-3 md:order-2 mt-6 md:mt-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-gray-300 shrink-0">Resume:</span>
+            <span className="text-sm font-medium text-gray-300 shrink-0">{mode === 'recruiter' ? 'Candidate CV:' : 'Resume:'}</span>
             {resumes.map(r => (
               <div key={r.id} className="flex items-center gap-0.5">
                 {editingResumeId === r.id ? (
@@ -311,38 +331,47 @@ export default function InputStep({ onBatch, error, resumes, activeResumeId, onS
 
       {/* Tone + Submit */}
       <div className="mt-6 flex flex-col items-center gap-4">
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-400">Tone:</span>
-          <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs">
-            {TONES.map(t => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTone(t.id)}
-                className={`px-4 py-1.5 transition-colors ${tone === t.id ? 'bg-violet-600 text-white' : 'bg-gray-900 text-gray-400 hover:text-white'}`}
-              >
-                {t.label}
-              </button>
-            ))}
+        {mode === 'applicant' && (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-400">Tone:</span>
+            <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs">
+              {TONES.map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTone(t.id)}
+                  className={`px-4 py-1.5 transition-colors ${tone === t.id ? 'bg-violet-600 text-white' : 'bg-gray-900 text-gray-400 hover:text-white'}`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
           className="px-8 py-3 rounded-xl bg-violet-600 text-white font-semibold text-sm hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          Analyze {readyCount} {readyCount === 1 ? 'job' : 'jobs'} →
+          {mode === 'recruiter'
+            ? `Evaluate ${readyCount} ${readyCount === 1 ? 'candidate' : 'candidates'} →`
+            : `Analyze ${readyCount} ${readyCount === 1 ? 'job' : 'jobs'} →`}
         </button>
       </div>
 
       <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        {[
+        {(mode === 'recruiter' ? [
+          { icon: '🎯', title: 'Fit Score', desc: 'Objective match against role requirements' },
+          { icon: '🚩', title: 'Red Flags', desc: 'Gaps and areas to probe in interview' },
+          { icon: '❓', title: 'Screening Questions', desc: '7 targeted questions for this candidate' },
+          { icon: '📋', title: 'ATS Note', desc: 'Ready-to-paste candidate summary' },
+        ] : [
           { icon: '🎯', title: 'Match Score', desc: 'See how well you fit the role' },
           { icon: '✍️', title: 'Tailored Bullets', desc: '5 resume bullets for this exact job' },
           { icon: '📝', title: 'Cover Letter', desc: 'Ready to send, your tone' },
           { icon: '🎤', title: 'Interview Prep', desc: '7 likely questions for this role' },
-        ].map(f => (
+        ]).map(f => (
           <div key={f.title} className="p-4 rounded-xl bg-gray-900/60 border border-gray-800">
             <div className="text-2xl mb-2">{f.icon}</div>
             <div className="text-sm font-medium text-white mb-1">{f.title}</div>

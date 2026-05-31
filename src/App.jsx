@@ -74,7 +74,7 @@ export default function App() {
     setHistory(prev => prev.map(e => e.id === id ? { ...e, status } : e))
   }
 
-  async function handleBatch({ jobs, resume, tone, resumeId }) {
+  async function handleBatch({ jobs, resume, tone, resumeId, mode = 'applicant' }) {
     setBatchResults([])
     setStep('batch')
     setError(null)
@@ -88,14 +88,14 @@ export default function App() {
         const res = await apiFetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jobDescription: job.description, resume, tone })
+          body: JSON.stringify({ jobDescription: job.description, resume, tone, mode })
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Failed')
         addToHistory(data)
-        results[i] = { ...data, status: 'done' }
+        results[i] = { ...data, status: 'done', mode }
       } catch (err) {
-        results[i] = { jobTitle: job.title || 'Unknown', company: '', status: 'error', error: err.message }
+        results[i] = { jobTitle: job.title || 'Unknown', company: '', status: 'error', error: err.message, mode }
       }
       setBatchResults([...results].filter(Boolean))
     }))

@@ -39,33 +39,36 @@ async function fetchDocxBuffer(result) {
   return res.arrayBuffer()
 }
 
+function LoadingCard() {
+  const [msgIndex, setMsgIndex] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setMsgIndex(i => (i + 1) % LOADING_MESSAGES.length), 3000)
+    return () => clearInterval(t)
+  }, [])
+  return (
+    <div className="rounded-xl bg-gray-900 border border-gray-800 p-4 flex items-center gap-3">
+      <span className="w-4 h-4 border-2 border-gray-600 border-t-violet-400 rounded-full animate-spin shrink-0" />
+      <span className="text-sm text-gray-400 transition-all">{LOADING_MESSAGES[msgIndex]}</span>
+    </div>
+  )
+}
+
+function ErrorCard({ result }) {
+  return (
+    <div className="rounded-xl bg-gray-900 border border-red-800/40 p-4 flex items-center gap-3">
+      <span className="text-red-400 text-sm shrink-0">✗</span>
+      <span className="text-sm text-gray-300 flex-1 truncate">{result.jobTitle}</span>
+      <span className="text-xs text-red-400 shrink-0">{result.error}</span>
+    </div>
+  )
+}
+
 function JobCard({ result }) {
   const [expanded, setExpanded] = useState(false)
   const [downloading, setDownloading] = useState(false)
 
-  if (result.status === 'error') {
-    return (
-      <div className="rounded-xl bg-gray-900 border border-red-800/40 p-4 flex items-center gap-3">
-        <span className="text-red-400 text-sm shrink-0">✗</span>
-        <span className="text-sm text-gray-300 flex-1 truncate">{result.jobTitle}</span>
-        <span className="text-xs text-red-400 shrink-0">{result.error}</span>
-      </div>
-    )
-  }
-
-  if (!result.matchScore) {
-    const [msgIndex, setMsgIndex] = useState(0)
-    useEffect(() => {
-      const t = setInterval(() => setMsgIndex(i => (i + 1) % LOADING_MESSAGES.length), 3000)
-      return () => clearInterval(t)
-    }, [])
-    return (
-      <div className="rounded-xl bg-gray-900 border border-gray-800 p-4 flex items-center gap-3">
-        <span className="w-4 h-4 border-2 border-gray-600 border-t-violet-400 rounded-full animate-spin shrink-0" />
-        <span className="text-sm text-gray-400 transition-all">{LOADING_MESSAGES[msgIndex]}</span>
-      </div>
-    )
-  }
+  if (result.status === 'error') return <ErrorCard result={result} />
+  if (!result.matchScore) return <LoadingCard />
 
   const scoreColor = result.matchScore >= 75 ? 'text-green-400' : result.matchScore >= 50 ? 'text-yellow-400' : 'text-red-400'
   const scoreBg = result.matchScore >= 75 ? 'bg-green-900/20 border-green-800/40' : result.matchScore >= 50 ? 'bg-yellow-900/20 border-yellow-800/40' : 'bg-red-900/20 border-red-800/40'
@@ -169,14 +172,117 @@ function JobCard({ result }) {
   )
 }
 
+const RECOMMENDATION_STYLES = {
+  'Strong Yes': 'text-green-400 bg-green-900/20 border-green-800/40',
+  'Yes': 'text-green-300 bg-green-900/10 border-green-800/30',
+  'Maybe': 'text-yellow-400 bg-yellow-900/20 border-yellow-800/40',
+  'Pass': 'text-red-400 bg-red-900/20 border-red-800/40',
+}
+
+function RecruiterCard({ result }) {
+  const [expanded, setExpanded] = useState(false)
+
+  if (result.status === 'error') return <ErrorCard result={result} />
+  if (!result.fitScore) return <LoadingCard />
+
+  const scoreColor = result.fitScore >= 75 ? 'text-green-400' : result.fitScore >= 50 ? 'text-yellow-400' : 'text-red-400'
+  const scoreBg = result.fitScore >= 75 ? 'bg-green-900/20 border-green-800/40' : result.fitScore >= 50 ? 'bg-yellow-900/20 border-yellow-800/40' : 'bg-red-900/20 border-red-800/40'
+  const recStyle = RECOMMENDATION_STYLES[result.recommendation] || 'text-gray-400 bg-gray-800 border-gray-700'
+
+  return (
+    <div className="rounded-xl bg-gray-900 border border-gray-800 overflow-hidden">
+      <div className="flex items-center gap-4 p-4">
+        <div className={`px-2.5 py-1 rounded-lg border text-sm font-bold ${scoreColor} ${scoreBg}`}>{result.fitScore}</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-white truncate">{result.jobTitle}</p>
+          {result.company && <p className="text-xs text-gray-500 truncate">{result.company}</p>}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {result.recommendation && (
+            <span className={`text-xs px-2.5 py-1 rounded-lg border font-medium ${recStyle}`}>
+              {result.recommendation}
+            </span>
+          )}
+          <button
+            onClick={() => setExpanded(e => !e)}
+            className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors border border-gray-700"
+          >
+            {expanded ? 'Hide' : 'View'}
+          </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="border-t border-gray-800 p-5 space-y-5">
+          <p className="text-sm text-gray-400 italic">{result.fitSummary}</p>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            {result.seniorityAssessment && (
+              <p className="text-sm text-gray-400">{result.seniorityAssessment}</p>
+            )}
+            {result.salaryBenchmark && (
+              <p className="text-sm text-gray-400">Expected salary: <span className="text-white font-medium">{result.salaryBenchmark}</span></p>
+            )}
+          </div>
+
+          {result.strengths?.length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Strengths</h3>
+              <ul className="space-y-1.5">
+                {result.strengths.map((s, i) => (
+                  <li key={i} className="flex gap-2 text-sm text-gray-300"><span className="text-green-400 shrink-0">✓</span>{s}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {result.redFlags?.length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Red Flags / Areas to Probe</h3>
+              <ul className="space-y-1.5">
+                {result.redFlags.map((f, i) => (
+                  <li key={i} className="flex gap-2 text-sm text-gray-300"><span className="text-red-400 shrink-0">⚑</span>{f}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {result.screeningQuestions?.length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Screening Questions</h3>
+              <ol className="space-y-2">
+                {result.screeningQuestions.map((q, i) => (
+                  <li key={i} className="flex gap-2 text-sm text-gray-300"><span className="text-violet-400 shrink-0 font-medium">{i + 1}.</span>{q}</li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {result.atsNote && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">ATS Note</h3>
+                <CopyButton text={result.atsNote} />
+              </div>
+              <p className="text-sm text-gray-300 leading-relaxed">{result.atsNote}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function BatchResultsStep({ results, loadingLabel }) {
   const [zipping, setZipping] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [funIndex, setFunIndex] = useState(0)
-  const done = results.filter(r => r.status === 'done' && r.matchScore).length
+  const score = r => r.matchScore || r.fitScore || 0
+  const done = results.filter(r => r.status === 'done' && score(r)).length
   const total = results.length
   const allDone = !loadingLabel && total > 0
-  const sorted = [...results].sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
+  const sorted = [...results].sort((a, b) => score(b) - score(a))
+  const isRecruiter = results[0]?.mode === 'recruiter'
 
   useEffect(() => {
     if (allDone) return
@@ -266,7 +372,7 @@ export default function BatchResultsStep({ results, loadingLabel }) {
               {done}/{total}
             </div>
           )}
-          {allDone && done > 1 && (
+          {allDone && done > 1 && !isRecruiter && (
             <button
               onClick={handleExportZip}
               disabled={zipping}
@@ -288,7 +394,10 @@ export default function BatchResultsStep({ results, loadingLabel }) {
       )}
 
       <div className="space-y-3">
-        {sorted.map((result, i) => <JobCard key={i} result={result} />)}
+        {sorted.map((result, i) => isRecruiter
+          ? <RecruiterCard key={i} result={result} />
+          : <JobCard key={i} result={result} />
+        )}
       </div>
     </div>
   )

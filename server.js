@@ -256,30 +256,55 @@ app.post('/api/fetch-job', async (req, res) => {
 
 // Analyze a single job application
 app.post('/api/analyze', analyzeRateLimit, async (req, res) => {
-  const { jobDescription, resume, tone = 'professional' } = req.body
+  const { jobDescription, resume, tone = 'professional', mode = 'applicant' } = req.body
   if (!jobDescription || !resume) {
     return res.status(400).json({ error: 'Missing jobDescription or resume' })
   }
 
   // Return cached result if available
-  const key = cacheKey(jobDescription, resume)
+  const key = cacheKey(jobDescription, resume + mode)
   const cached = resultCache.get(key)
   if (cached && Date.now() - cached.ts < 60 * 60 * 1000) return res.json(cached.data)
 
   const toneInstruction = TONE_INSTRUCTIONS[tone] || TONE_INSTRUCTIONS.professional
-  const systemPrompt = `You are an expert career coach and resume writer. You help job seekers tailor their applications to specific job descriptions. Be specific, actionable, and concise. Always return valid JSON. Never use em dashes anywhere in your output. Use commas, periods, or rewrite the sentence instead. ${toneInstruction}`
 
-  const jobPrompt = `Analyze the resume above against this job and return a JSON object with exactly these keys:
+  let systemPrompt, jobPrompt
+
+  if (mode === 'recruiter') {
+    systemPrompt = `You are an expert talent acquisition specialist and technical recruiter. You evaluate candidates objectively against job requirements. Be specific, data-driven, and direct. Always return valid JSON. Never use em dashes in your output.`
+
+    jobPrompt = `Evaluate the candidate's resume against this job description and return a JSON object with exactly these keys:
+
+- "jobTitle": the job title extracted from the job description
+- "company": the company name extracted from the job description
+- "fitScore": integer 0-100 representing how well the candidate fits the role
+- "fitSummary": 2-3 sentences summarizing the overall candidate fit and key reasons
+- "recommendation": exactly one of "Strong Yes", "Yes", "Maybe", or "Pass"
+- "strengths": array of 4-5 specific candidate strengths most relevant to this role, each as a concrete statement referencing the resume
+- "redFlags": array of 2-4 honest concerns, gaps, or areas to probe in interview — be direct
+- "screeningQuestions": array of 7 targeted screening or interview questions specific to this candidate and this role
+- "seniorityAssessment": 1-2 sentences assessing if the candidate seniority level matches the role requirements
+- "salaryBenchmark": a realistic salary range this candidate would likely expect. Format as "NOK 800,000 - NOK 1,000,000" or "$80,000 - $100,000"
+- "atsNote": a concise 2-3 sentence note suitable for pasting into an ATS or internal candidate tracking system
+
+JOB DESCRIPTION:
+${jobDescription}
+
+Return only the JSON object, no markdown, no explanation.`
+  } else {
+    systemPrompt = `You are an expert career coach and resume writer. You help job seekers tailor their applications to specific job descriptions. Be specific, actionable, and concise. Always return valid JSON. Never use em dashes anywhere in your output. Use commas, periods, or rewrite the sentence instead. ${toneInstruction}`
+
+    jobPrompt = `Analyze the resume above against this job and return a JSON object with exactly these keys:
 
 - "jobTitle": the job title extracted from the job description
 - "company": the company name extracted from the job description
 - "matchScore": integer 0-100 representing how well the resume matches the job
 - "matchSummary": 1-2 sentence summary of the fit
-- "tailoredBullets": array of 5 strong resume bullet points tailored to the job (start each with an action verb)
-- "coverLetter": a full professional cover letter (3-4 paragraphs) tailored to the job
+- "tailoredBullets": array of 5 strong resume bullet points tailored to the job (start each with an action verb, reference specific achievements from the resume)
+- "coverLetter": a compelling cover letter with exactly 4 paragraphs: (1) strong opening naming the specific role and company, immediately establishing fit with the candidate's most relevant achievement; (2) 2-3 specific accomplishments from the resume that directly address the role's key requirements, with numbers or impact where possible; (3) why this specific company is appealing based on what can be inferred from the job posting, connecting it to the candidate's values or goals; (4) confident closing with a clear call to action. Each paragraph should be 3-5 sentences. Reference specific details from both the resume and job description throughout. Do not use em dashes.
 - "emailDraft": a short 3-4 sentence email to send when submitting the application, referencing the role and company
 - "gapAnalysis": array of 3-5 honest gaps or concerns — skills missing, experience lacking, or things that may count against the candidate for this specific role. Be direct and constructive.
-- "salaryEstimate": a realistic salary range string for this specific candidate for this role. Format as "$80,000 - $100,000" or "£45,000 - £60,000". If location is unclear use a general market estimate.
+- "salaryEstimate": a realistic salary range string for this specific candidate for this role. Format as "$80,000 - $100,000" or "NOK 800,000 - NOK 1,000,000". If location is unclear use a general market estimate.
 - "salaryContext": one sentence explaining the estimate.
 - "companySummary": array of 3-4 short bullet points about the company based only on what can be inferred from the job description
 - "interviewQuestions": array of 7 likely interview questions for this specific role
@@ -289,6 +314,7 @@ JOB DESCRIPTION:
 ${jobDescription}
 
 Return only the JSON object, no markdown, no explanation.`
+  }
 
   try {
     let raw = (await runAnalysis(systemPrompt, resume, jobPrompt)).trim().replace(/—/g, ',')
