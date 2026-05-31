@@ -20,8 +20,23 @@ const DIST = join(__dirname, 'dist')
 const APP_PASSCODE = process.env.APP_PASSCODE || ''
 const MODEL_PROVIDER = process.env.MODEL_PROVIDER || 'claude' // 'claude' or 'groq'
 
+const ALLOWED_ORIGINS = [
+  'https://offerlia.net',
+  'https://www.offerlia.net',
+  'http://localhost:5173',
+  'http://localhost:3001',
+]
+
 const app = express()
-app.use(cors())
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow no-origin requests (server-to-server, health checks)
+    if (!origin) return callback(null, true)
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true)
+    callback(new Error('Not allowed by CORS'))
+  },
+  credentials: true,
+}))
 app.use(express.json({ limit: '50kb' }))
 
 // Passcode middleware — protects all /api routes

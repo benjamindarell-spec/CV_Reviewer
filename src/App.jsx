@@ -5,6 +5,7 @@ import ResultsStep from './components/ResultsStep'
 import BatchResultsStep from './components/BatchResultsStep'
 import HistoryPanel from './components/HistoryPanel'
 import PasscodeGate from './components/PasscodeGate'
+import LegalModal from './components/LegalModal'
 import { apiFetch } from './api.js'
 
 const HISTORY_KEY = 'jac_history'
@@ -28,6 +29,7 @@ export default function App() {
   const [batchResults, setBatchResults] = useState([])
   const [error, setError] = useState(null)
   const [showHistory, setShowHistory] = useState(false)
+  const [showLegal, setShowLegal] = useState(false)
   const [loadingLabel, setLoadingLabel] = useState(null)
 
   const [history, setHistory] = useState(() => loadJSON(HISTORY_KEY, []))
@@ -167,7 +169,12 @@ export default function App() {
         </div>
       </header>
 
-      <div className="fixed bottom-4 left-4 text-xs text-gray-600 select-none">offerlia.net</div>
+      <div className="fixed bottom-4 left-4 flex items-center gap-3 text-xs text-gray-600 select-none">
+        <span>offerlia.net</span>
+        <button onClick={() => setShowLegal(true)} className="hover:text-gray-400 transition-colors underline underline-offset-2">
+          Terms &amp; Privacy
+        </button>
+      </div>
 
       <main className="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10">
         {step === 'input' && mode === 'applicant' && (
@@ -192,6 +199,8 @@ export default function App() {
         {step === 'results' && <ResultsStep results={results} />}
         {step === 'batch' && <BatchResultsStep results={batchResults} loadingLabel={loadingLabel} />}
       </main>
+
+      {showLegal && <LegalModal onClose={() => setShowLegal(false)} />}
 
       {showHistory && (
         <HistoryPanel
